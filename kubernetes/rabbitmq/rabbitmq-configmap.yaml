@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-config
+  namespace: rabbitmq-qa
+data:
+  rabbitmq.conf: |
+    # Clustering configuration
+    cluster_formation.peer_discovery_backend = k8s
+    cluster_formation.k8s.host = kubernetes.default.svc.cluster.local
+    cluster_formation.k8s.address_type = hostname
+    cluster_formation.k8s.service_name = rabbitmq-headless
+    # Alternative if using FQDN:
+    # cluster_formation.k8s.hostname_suffix = .rabbitmq-headless.rabbitmq-qa.svc.cluster.local
+    # cluster_formation.node_cleanup.interval = 60
+    # cluster_formation.node_cleanup.only_log_warning = true
+    # cluster_kicker.interval = 60
+
+    # Default user/pass - It's recommended to change these or manage users via HTTP API or definitions
+    # For production, REMOVE these lines and manage users/permissions explicitly.
+    # Secrets should be used for credentials.
+    # default_user = guest
+    # default_pass = guest
+
+    # HiPE compilation (optional, can increase startup time but might improve performance)
+    # hipe_compile = true
+
+    # Heartbeat interval
+    heartbeat = 60
+
+    # Memory and disk watermarks
+    vm_memory_high_watermark.relative = 0.7
+    disk_free_limit.absolute = 50MB
+
+    # Management plugin
+    management.load_definitions = /etc/rabbitmq/definitions.json
+  definitions.json: |
+    {
+      "users": [
+        {
+          "name": "admin",
+          "password_hash": "PLEASE_REPLACE_WITH_SECURE_HASH",
+          "hashing_algorithm": "rabbit_password_hashing_sha256",
+          "tags": "administrator"
+        }
+      ],
+      "vhosts": [
+        {
+          "name": "/"
+        }
+      ],
+      "permissions": [
+        {
+          "user": "admin",
+          "vhost": "/",
+          "configure": ".*",
+          "write": ".*",
+          "read": ".*"
+        }
+      ],
+      "policies": [
+        {
+          "vhost": "/",
+          "name": "ha-all",
+          "pattern": ".*",
+          "apply-to": "queues",
+          "definition": {
+            "ha-mode": "all",
+            "ha-sync-mode": "automatic"
+          }
+        }
+      ],
+      "queues": [],
+      "exchanges": [],
+      "bindings": []
+    }
+  enabled_plugins: |
+    [rabbitmq_management,rabbitmq_peer_discovery_k8s,rabbitmq_prometheus,rabbitmq_consistent_hash_exchange].

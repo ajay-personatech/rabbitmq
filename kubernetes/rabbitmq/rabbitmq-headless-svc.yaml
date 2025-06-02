@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-headless # This name MUST match spec.serviceName in the StatefulSet
+  namespace: rabbitmq-qa
+  labels:
+    app: rabbitmq
+spec:
+  clusterIP: None # This makes the service "headless"
+  publishNotReadyAddresses: true # Important for statefulsets, allows discovery of pods even before they are fully ready
+  ports:
+  - name: amqp
+    port: 5672
+    targetPort: amqp
+  - name: management
+    port: 15672
+    targetPort: management
+  # - name: epmd # Not strictly necessary to expose on the headless service for k8s discovery
+  #   port: 4369
+  #   targetPort: epmd
+  # - name: cluster-rpc # For inter-node and CLI tool communication. Good to have for CLI tools.
+  #   port: 25672
+  #   targetPort: 25672 # This should match the RabbitMQ distribution port
+  selector:
+    app: rabbitmq # Selects the pods managed by the StatefulSet
