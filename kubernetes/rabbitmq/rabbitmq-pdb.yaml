@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rabbitmq-pdb
+  namespace: rabbitmq-qa
+  labels:
+    app: rabbitmq
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: rabbitmq # This must match the labels of the pods in the StatefulSet
