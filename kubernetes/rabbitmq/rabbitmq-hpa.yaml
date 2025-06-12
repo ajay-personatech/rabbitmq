@@ -1,0 +1,55 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rabbitmq-hpa
+  namespace: rabbitmq-qa
+  labels:
+    app: rabbitmq
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: rabbitmq # Name of the StatefulSet to target
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization # Targets average memory utilization across pods
+        averageUtilization: 60
+  behavior: # Optional: Define scaling behavior for more control
+    scaleDown:
+      stabilizationWindowSeconds: 300 # Wait 5 minutes before scaling down after a scale up
+      policies:
+      - type: Percent
+        value: 100 # Allow scaling down all necessary pods at once (after stabilization)
+        periodSeconds: 60
+      - type: Pods # As an alternative or additional policy
+        value: 1 # Scale down by 1 pod at a time
+        periodSeconds: 120 # Every 2 minutes if conditions still met
+      selectPolicy: Max # Use the policy that allows the biggest change
+    scaleUp:
+      stabilizationWindowSeconds: 0 # Scale up immediately if needed
+      policies:
+      - type: Percent
+        value: 100 # Allow scaling up by 100% of current replicas if needed (respecting maxReplicas)
+        periodSeconds: 60
+      - type: Pods
+        value: 4 # Allow scaling up by up to 4 pods at a time
+        periodSeconds: 60
+      selectPolicy: Max # Use the policy that allows the biggest change
+
+# Notes on HPA v2 vs v2beta2:
+# - `autoscaling/v2` is generally preferred if your K8s version supports it (1.23+).
+# - `autoscaling/v2beta2` is older but widely supported. The structure is very similar.
+# - If using an older K8s version, you might need to change apiVersion to autoscaling/v2beta2
+#   and ensure `target.type` was `AverageValue` for memory if `Utilization` wasn't supported for memory directly.
+#   However, for GKE, `autoscaling/v2` and memory utilization should be fine.

@@ -8,6 +8,7 @@ This directory contains Kubernetes manifests to deploy a fault-tolerant and secu
 - **High Availability**:
     - Queue mirroring policy (`ha-all`) enabled by default for all queues.
     - PodDisruptionBudget (`rabbitmq-pdb`) to ensure service availability during voluntary disruptions (e.g., node maintenance).
+- **Horizontal Pod Autoscaler (HPA)**: Scales pods from 3 to 10 based on CPU/memory.
 - **Secure Credential Management**:
     - Erlang cookie fetched from GCP Secret Manager using the Secrets Store CSI Driver.
     - Prepared for Workload Identity to allow GKE service accounts to securely access GCP resources (like Secret Manager and Artifact Registry).
@@ -147,6 +148,34 @@ Check that secrets are mounted:
 kubectl exec -it rabbitmq-0 -n rabbitmq-qa -- ls -l /mnt/secrets-store/
 kubectl exec -it rabbitmq-0 -n rabbitmq-qa -- cat /mnt/secrets-store/erlang_cookie # (Don't print sensitive data like this in prod logs)
 ```
+
+## Horizontal Pod Autoscaling (HPA)
+
+To automatically scale the RabbitMQ cluster based on load, a `HorizontalPodAutoscaler` (`rabbitmq-hpa.yaml`) is configured with the following parameters:
+
+- **Target**: `rabbitmq` StatefulSet
+- **Minimum Replicas**: 3
+- **Maximum Replicas**: 10
+- **Metrics for Scaling**:
+    - CPU Utilization: Scales up if average CPU utilization across pods exceeds 60%.
+    - Memory Utilization: Scales up if average memory utilization across pods exceeds 60%.
+- **Scaling Behavior**: Includes defined policies for more controlled scale-up (quick) and scale-down (stabilized) operations.
+
+### HPA Prerequisites
+
+- **Metrics Server**: The Kubernetes Metrics Server must be installed and running in your cluster. GKE clusters usually have this pre-installed or available as an addon. If not, you can typically install it with:
+  ```bash
+  kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+  ```
+  Verify its installation with `kubectl get deployment metrics-server -n kube-system`.
+
+### Autoscaling Implications for RabbitMQ
+
+- **Node Discovery**: The RabbitMQ Kubernetes peer discovery plugin is designed to handle nodes joining and leaving the cluster, which is essential for autoscaling.
+- **Queue Data During Scale-Down**:
+    - **Classic Mirrored Queues (Current Setup)**: When the cluster scales down, RabbitMQ nodes are removed. If classic mirrored queues (`ha-mode: all` or `ha-mode: exactly`) are used, RabbitMQ will attempt to re-synchronize mirrors from the departing node to remaining nodes. This process can take time and consume resources. For graceful shutdown, ensuring queues are fully synced before a node is terminated is ideal, though HPA-driven scale-down is typically abrupt. The configured `ha-sync-mode: automatic` helps.
+    - **Quorum Queues**: For environments with frequent scaling, Quorum Queues (available in RabbitMQ 3.8+) are generally recommended over classic mirrored queues. They offer better data safety and are designed with modern distributed systems principles in mind, handling node additions/removals more robustly. Migrating to Quorum Queues would involve changing the HA policies in `rabbitmq-configmap.yaml`.
+- **Monitoring**: Monitor HPA events (`kubectl describe hpa rabbitmq-hpa -n rabbitmq-qa`) and RabbitMQ cluster status during scaling operations.
 
 ## Accessing RabbitMQ
 
