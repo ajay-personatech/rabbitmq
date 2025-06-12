@@ -2,7 +2,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: rabbitmq-hpa
-  namespace: rabbitmq-qa
+  namespace: <%= bindings["namespace"] %>
   labels:
     app: rabbitmq
 spec:
@@ -10,8 +10,8 @@ spec:
     apiVersion: apps/v1
     kind: StatefulSet
     name: rabbitmq # Name of the StatefulSet to target
-  minReplicas: 3
-  maxReplicas: 10
+  minReplicas: <%= bindings["hpa_min_replicas"] || 3 %>
+  maxReplicas: <%= bindings["hpa_max_replicas"] || 10 %>
   metrics:
   - type: Resource
     resource:

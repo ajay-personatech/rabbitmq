@@ -2,9 +2,11 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: rabbitmq-config
-  namespace: rabbitmq-qa
+  namespace: <%= bindings["namespace"] %>
 data:
   rabbitmq.conf: |
+    # To template cluster name (e.g., based on environment):
+    # cluster_name = rabbit@<%= bindings["app_env"] || "default_env" %>
     # Clustering configuration
     cluster_formation.peer_discovery_backend = k8s
     cluster_formation.k8s.host = kubernetes.default.svc.cluster.local
@@ -39,7 +41,7 @@ data:
       "users": [
         {
           "name": "admin",
-          "password_hash": "PLEASE_REPLACE_WITH_SECURE_HASH",
+          "password_hash": "<%= bindings["rabbitmq_admin_password_hash"] || "PLEASE_REPLACE_WITH_SECURE_HASH" %>",
           "hashing_algorithm": "rabbit_password_hashing_sha256",
           "tags": "administrator"
         }

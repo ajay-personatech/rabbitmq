@@ -2,9 +2,18 @@ apiVersion: v1
 kind: Service
 metadata:
   name: rabbitmq-client
-  namespace: rabbitmq-qa
+  namespace: <%= bindings["namespace"] %>
   labels:
     app: rabbitmq
+  # Example for templating annotations based on environment:
+  # <% if bindings["app_env"] == "production" %>
+  # annotations:
+  #   cloud.google.com/load-balancer-type: "External"
+  # <% else %>
+  # annotations:
+  #   cloud.google.com/load-balancer-type: "Internal"
+  #   networking.gke.io/load-balancer-type: "Internal" # For GKE newer versions
+  # <% end %>
   # annotations:
     # Example for GCP Internal Load Balancer:
     # cloud.google.com/load-balancer-type: "Internal"

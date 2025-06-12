@@ -2,12 +2,12 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: rabbitmq
-  namespace: rabbitmq-qa
+  namespace: <%= bindings["namespace"] %>
   labels:
     app: rabbitmq
 spec:
   serviceName: rabbitmq-headless # Must match the headless service name
-  replicas: 3
+  replicas: <%= bindings["rabbitmq_base_replicas"] || 3 %>
   selector:
     matchLabels:
       app: rabbitmq
@@ -48,7 +48,7 @@ spec:
       #      --namespace rabbitmq-qa \
       #      iam.gke.io/gcp-service-account=YOUR_GSA_EMAIL
       # 5. Uncomment and set the serviceAccountName below to your KSA name.
-      # serviceAccountName: rabbitmq-ksa # Replace with your KSA name
+      serviceAccountName: <%= bindings["rabbitmq_ksa_name"] || "rabbitmq-ksa" %>
 
       securityContext:
         runAsUser: 999 # UID for rabbitmq user in the standard image
@@ -61,8 +61,15 @@ spec:
 
       containers:
       - name: rabbitmq
-        image: rabbitmq:3.12-management # Using a version with management plugin
+        image: <%= bindings["rabbitmq_image_repository"] || "rabbitmq" %>:<%= bindings["rabbitmq_image_tag"] || "3.12-management" %> # Using a version with management plugin
         imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              cpu: "<%= bindings["rabbitmq_cpu_limit"] || "1" %>"
+              memory: "<%= bindings["rabbitmq_memory_limit"] || "2Gi" %>"
+            requests:
+              cpu: "<%= bindings["rabbitmq_cpu_request"] || "500m" %>"
+              memory: "<%= bindings["rabbitmq_memory_request"] || "1Gi" %>"
         securityContext:
           runAsNonRoot: true
           runAsUser: 999

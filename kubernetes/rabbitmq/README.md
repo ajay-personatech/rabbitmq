@@ -9,6 +9,7 @@ This directory contains Kubernetes manifests to deploy a fault-tolerant and secu
     - Queue mirroring policy (`ha-all`) enabled by default for all queues.
     - PodDisruptionBudget (`rabbitmq-pdb`) to ensure service availability during voluntary disruptions (e.g., node maintenance).
 - **Horizontal Pod Autoscaler (HPA)**: Scales pods from 3 to 10 based on CPU/memory.
+- **Templating**: Uses ERB templates for dynamic configuration per environment, suitable for Krane deployments.
 - **Secure Credential Management**:
     - Erlang cookie fetched from GCP Secret Manager using the Secrets Store CSI Driver.
     - Prepared for Workload Identity to allow GKE service accounts to securely access GCP resources (like Secret Manager and Artifact Registry).
@@ -22,132 +23,127 @@ This directory contains Kubernetes manifests to deploy a fault-tolerant and secu
 
 ## Manifests Overview
 
-- `../namespace.yaml`: Defines the `rabbitmq-qa` namespace.
-- `rabbitmq-configmap.yaml`: RabbitMQ configuration, including clustering, plugins, and initial definitions (users, policies).
-- `rabbitmq-secret-provider-class.yaml`: Configures the Secrets Store CSI Driver to fetch secrets from GCP Secret Manager.
-- `rabbitmq-statefulset.yaml`: Deploys RabbitMQ nodes, integrates with Secret Manager via CSI driver, and configured for non-root execution.
-- `rabbitmq-headless-svc.yaml`: Headless service for DNS-based peer discovery.
-- `rabbitmq-client-svc.yaml`: LoadBalancer service to expose AMQP and Management UI.
-- `rabbitmq-pdb.yaml`: PodDisruptionBudget to ensure high availability.
-- `rabbitmq-networkpolicy.yaml`: Network policies for restricting traffic.
-- `rabbitmq-secret.yaml`: (Legacy for initial setup, Erlang cookie now via CSI) Contains base64 encoded placeholders. Useful if not using CSI for all secrets immediately or for other secrets.
+- **Namespace**: Defined via ERB template variable `<%= bindings["namespace"] %>` (formerly `../namespace.yaml`).
+- `templates/rabbitmq-configmap.yaml.erb`: RabbitMQ configuration, including clustering, plugins, and initial definitions (users, policies).
+- `templates/rabbitmq-secret-provider-class.yaml.erb`: Configures the Secrets Store CSI Driver to fetch secrets from GCP Secret Manager.
+- `templates/rabbitmq-statefulset.yaml.erb`: Deploys RabbitMQ nodes, integrates with Secret Manager via CSI driver, and configured for non-root execution.
+- `templates/rabbitmq-headless-svc.yaml.erb`: Headless service for DNS-based peer discovery.
+- `templates/rabbitmq-client-svc.yaml.erb`: LoadBalancer service to expose AMQP and Management UI.
+- `templates/rabbitmq-pdb.yaml.erb`: PodDisruptionBudget to ensure high availability.
+- `templates/rabbitmq-hpa.yaml.erb`: HorizontalPodAutoscaler for automatic scaling.
+- `templates/rabbitmq-networkpolicy.yaml.erb`: Network policies for restricting traffic.
+- `templates/rabbitmq-secret.yaml.erb`: (Legacy placeholder, Erlang cookie now via CSI) ERB template for placeholder Kubernetes Secret. Useful if not using CSI for all secrets or for other manually managed secrets.
 
-## Prerequisites
+## Setup and Deployment with Krane
 
-1.  **GKE Cluster**: A running GKE cluster with the Secrets Store CSI Driver and its GCP provider installed.
-    ```bash
-    # Enable Secrets Store CSI Driver on your GKE cluster (if not already enabled)
-    # gcloud container clusters update YOUR_CLUSTER_NAME --update-addons ConfigConnector=ENABLED,GcpManagedSecrets=ENABLED --region YOUR_REGION
-    # The GcpManagedSecrets addon includes the CSI driver and GCP provider.
-    ```
-2.  **`kubectl`**: Configured to connect to your GKE cluster.
-3.  **GCP Project**: A GCP project with billing enabled.
-4.  **IAM Permissions**:
-    -   Your user/principal needs permissions to manage GKE, IAM, and Secret Manager.
-    -   A Google Service Account (GSA) will be created for RabbitMQ with permissions to:
-        -   Read secrets from GCP Secret Manager (`roles/secretmanager.secretAccessor`).
-        -   (Optional) Read images from Artifact Registry/GCR if using private images (`roles/artifactregistry.reader`).
+These manifests are designed to be deployed using Krane, leveraging ERB templates for environment-specific configurations.
 
-## Setup and Deployment
+### 1. Prerequisites for Krane Deployment
 
-### 1. Clone the Repository (if applicable)
+- **Krane CLI**: Ensure you have Krane installed and configured.
+- **Ruby Environment**: Krane uses Ruby and ERB.
+- **GCP Configuration**: Ensure your environment where Krane runs has access to the target GKE cluster and any necessary GCP services (like Secret Manager if Krane needs to interact with it, though typically secrets are fetched by the CSI driver in-cluster).
+- **GKE Cluster**: A running GKE cluster with the Secrets Store CSI Driver and its GCP provider installed.
+  ```bash
+  # Enable Secrets Store CSI Driver on your GKE cluster (if not already enabled)
+  # gcloud container clusters update YOUR_CLUSTER_NAME --update-addons ConfigConnector=ENABLED,GcpManagedSecrets=ENABLED --region YOUR_REGION
+  # The GcpManagedSecrets addon includes the CSI driver and GCP provider.
+  ```
+- **IAM Permissions**:
+    - Your user/principal needs permissions to manage GKE, IAM, and Secret Manager for initial setup of secrets and service accounts.
+    - The GSA used by Workload Identity (linked to `rabbitmq_ksa_name`) needs `roles/secretmanager.secretAccessor` for the specified secrets.
+    - (Optional) If using private images from GCR/GAR, the GSA also needs `roles/artifactregistry.reader`.
 
-If these files are in a Git repository, clone it.
+### 2. Environment Configuration (Bindings)
 
-### 2. Review and Customize Manifests
+Krane uses a mechanism (often a `bindings.yaml` file or environment variables) to provide values to the ERB templates. You will need to define the following bindings for each target environment (e.g., qa, staging, demo, testing):
 
--   **`kubernetes/rabbitmq/rabbitmq-secret-provider-class.yaml`**:
-    -   Replace `YOUR_GCP_PROJECT_ID` with your actual GCP Project ID.
-    -   Ensure the secret names (`rabbitmq-erlang-cookie`, `rabbitmq-admin-password`) match the names you will create in Secret Manager.
--   **`kubernetes/rabbitmq/rabbitmq-configmap.yaml`**:
-    -   In `definitions.json`, the `admin` user's `password_hash` is a placeholder: `"PLEASE_REPLACE_WITH_SECURE_HASH"`.
-        Generate a hash for your desired admin password:
+**Required Bindings:**
+
+- `namespace`: (String) The Kubernetes namespace to deploy to (e.g., `"rabbitmq-qa"`, `"rabbitmq-staging"`). All resources will be deployed into this namespace.
+- `gcp_project_id`: (String) Your Google Cloud Project ID where secrets are stored (used by `rabbitmq-secret-provider-class.yaml.erb`).
+- `erlang_cookie_secret_name`: (String, Default: `"rabbitmq-erlang-cookie"`) Name of the secret in GCP Secret Manager for the Erlang cookie.
+- `admin_password_secret_name`: (String, Default: `"rabbitmq-admin-password"`) Name of the secret in GCP Secret Manager for the admin password (used by SecretProviderClass).
+
+**Application Behavior Bindings:**
+
+- `rabbitmq_base_replicas`: (Integer, Default: `3`) Initial number of RabbitMQ pods for the StatefulSet.
+- `hpa_min_replicas`: (Integer, Default: `3`) Minimum replicas for HPA.
+- `hpa_max_replicas`: (Integer, Default: `10`) Maximum replicas for HPA.
+- `rabbitmq_image_repository`: (String, Default: `"rabbitmq"`) The container image repository.
+- `rabbitmq_image_tag`: (String, Default: `"3.12-management"`) The container image tag.
+- `rabbitmq_admin_password_hash`: (String, Default: `"PLEASE_REPLACE_WITH_SECURE_HASH"`) The hashed admin password for `definitions.json` in the ConfigMap.
+  Generate using: `docker run -it --rm rabbitmq:3.12 rabbitmqctl hash_password "YourStrongPasswordHere"`
+  This hash should be for the password whose plain text is stored in the GCP secret referenced by `admin_password_secret_name` if you intend for them to match. The primary mechanism for RabbitMQ login will be this hash.
+
+**Resource Bindings (with defaults):**
+
+- `rabbitmq_cpu_request`: (String, Default: `"500m"`) CPU request per RabbitMQ pod.
+- `rabbitmq_memory_request`: (String, Default: `"1Gi"`) Memory request per RabbitMQ pod.
+- `rabbitmq_cpu_limit`: (String, Default: `"1"`) CPU limit per RabbitMQ pod.
+- `rabbitmq_memory_limit`: (String, Default: `"2Gi"`) Memory limit per RabbitMQ pod.
+
+**Optional Bindings (with defaults):**
+
+- `rabbitmq_ksa_name`: (String, Default: `"rabbitmq-ksa"`) Kubernetes Service Account name to use for the pods. This KSA should be configured for Workload Identity by binding it to a Google Service Account (GSA) that has permissions to access the specified secrets in GCP Secret Manager.
+  **Manual Setup for Workload Identity (one-time or per new KSA/GSA):**
+    1.  Create KSA: `kubectl create serviceaccount <%= bindings["rabbitmq_ksa_name"] || "rabbitmq-ksa" %> --namespace <%= bindings["namespace"] %>`
+    2.  Create GSA (e.g., `rabbitmq-gsa@<%= bindings["gcp_project_id"] %>.iam.gserviceaccount.com`).
+    3.  Grant GSA access to secrets (see IAM Permissions above).
+    4.  Bind KSA to GSA:
         ```bash
-        # Run this in a temporary RabbitMQ Docker container or use an online generator (less secure for prod passwords)
-        # docker run -it --rm rabbitmq:3.12 rabbitmqctl hash_password "YourStrongPasswordHere"
+        gcloud iam service-accounts add-iam-policy-binding \
+          --role roles/iam.workloadIdentityUser \
+          --member "serviceAccount:<%= bindings["gcp_project_id"] %>.svc.id.goog[<%= bindings["namespace"] %>/<%= bindings["rabbitmq_ksa_name"] || "rabbitmq-ksa" %>]" \
+          rabbitmq-gsa@<%= bindings["gcp_project_id"] %>.iam.gserviceaccount.com # Replace with your GSA email
+        kubectl annotate serviceaccount <%= bindings["rabbitmq_ksa_name"] || "rabbitmq-ksa" %> \
+          --namespace <%= bindings["namespace"] %> \
+          iam.gke.io/gcp-service-account=rabbitmq-gsa@<%= bindings["gcp_project_id"] %>.iam.gserviceaccount.com # Replace with your GSA email
         ```
-        Replace the placeholder with the generated hash (e.g., `{sha256_base64,LONG_HASH_STRING}`).
--   **(Optional) `kubernetes/rabbitmq/rabbitmq-client-svc.yaml`**:
-    -   Change `type: LoadBalancer` if you need a different service type (e.g., `NodePort`, or `ClusterIP` for use with an Ingress).
-    -   For GKE internal load balancers, uncomment and configure annotations.
+- `app_env`: (String) Environment name (e.g., `"qa"`, `"staging"`). Can be used for conditional logic in templates or naming conventions. (Example usage for cluster name or annotations is commented in templates).
+- `rabbitmq_erlang_cookie_base64`: (String, Default: `"PLACEHOLDER_ERLANG_COOKIE"`) Base64 encoded Erlang cookie for `templates/rabbitmq-secret.yaml.erb` (if used).
+- `rabbitmq_admin_password_base64`: (String, Default: `"PLACEHOLDER_ADMIN_PASSWORD_BASE64"`) Base64 encoded admin password for `templates/rabbitmq-secret.yaml.erb` (if used).
 
-### 3. Create Secrets in GCP Secret Manager
+**Example `bindings.yaml` snippet (conceptual):**
+```yaml
+# For QA environment
+namespace: "rabbitmq-qa"
+gcp_project_id: "my-gcp-project-qa"
+erlang_cookie_secret_name: "qa-rabbitmq-erlang-cookie"
+admin_password_secret_name: "qa-rabbitmq-admin-password"
+rabbitmq_base_replicas: 3
+# ... other qa specific values
+```
 
-Create the following secrets in GCP Secret Manager (ensure they are in the same project specified in `SecretProviderClass`):
+### 3. Create Secrets in GCP Secret Manager (one-time)
 
--   **`rabbitmq-erlang-cookie`**: A long, random string for inter-node communication.
+Ensure the secrets referenced by `erlang_cookie_secret_name` and `admin_password_secret_name` exist in GCP Secret Manager in the `gcp_project_id`.
+
+-   **Erlang Cookie**: Store a long, random string.
     ```bash
     # Example:
-    openssl rand -base64 48 | gcloud secrets create rabbitmq-erlang-cookie --data-file=- --project=YOUR_GCP_PROJECT_ID --replication-policy=automatic
+    openssl rand -base64 48 | gcloud secrets create YOUR_ERLANG_COOKIE_SECRET_NAME --data-file=- --project=YOUR_GCP_PROJECT_ID --replication-policy=automatic
     ```
--   **`rabbitmq-admin-password`**: The plain-text password for the `admin` user whose hash you placed in `rabbitmq-configmap.yaml`. This is stored for reference or if you build a system to update users via API. The primary source of truth for the password at deployment is the hash in the ConfigMap.
+-   **Admin Password**: Store the plain-text password for the `admin` user. The hash of this password should be used for the `rabbitmq_admin_password_hash` binding.
 
-### 4. Set up Workload Identity
+### 4. Krane Deployment Steps
 
-This allows the RabbitMQ pods (via a Kubernetes Service Account) to securely access GCP Secret Manager.
-
--   **Create a Kubernetes Service Account (KSA)**:
+1.  **Navigate to your deployment directory** where your Krane configuration and these templates reside.
+2.  **Ensure your Krane bindings** for the target environment are correctly set up (e.g., via environment variables or a bindings file that Krane loads).
+3.  **Run `krane deploy`**:
     ```bash
-    kubectl create serviceaccount rabbitmq-ksa --namespace rabbitmq-qa
+    krane deploy <your_target_environment_or_cluster> --filenames kubernetes/rabbitmq/templates/
     ```
-    (The `rabbitmq-statefulset.yaml` is already configured to use `serviceAccountName: rabbitmq-ksa` if uncommented. For CSI driver access to secrets, the node's GSA is often used by default if the CSI driver is installed with GKE default config. If you need pod-specific GSA for CSI, further annotation on KSA for CSI driver might be needed or ensure `rabbitmq-ksa` is used by CSI driver.)
+    (Adjust the command based on your specific Krane setup, especially how you specify the target namespace/environment and template paths).
 
-    For the CSI driver to use a specific KSA (`rabbitmq-ksa`) to impersonate a GSA when accessing secrets, you usually need to annotate the KSA that the *CSI driver's provider pod* runs as, or ensure the nodes themselves have the necessary scope.
-    However, for Workload Identity to be used by applications *within the pod* (e.g. if RabbitMQ itself needed to talk to GCP services), you'd set it on `rabbitmq-ksa`.
+### 5. Verify Deployment
 
-    The GKE managed addon for Secrets Store CSI Driver (`GcpManagedSecrets`) often uses the GKE node pool's service account. To ensure least privilege for RabbitMQ accessing secrets:
-    1. Create a dedicated Google Service Account (GSA) for RabbitMQ.
-    ```bash
-    GSA_NAME="rabbitmq-gsa"
-    GSA_PROJECT="YOUR_GCP_PROJECT_ID"
-    gcloud iam service-accounts create ${GSA_NAME} --project=${GSA_PROJECT} --display-name="RabbitMQ GSA"
-    GSA_EMAIL="${GSA_NAME}@${GSA_PROJECT}.iam.gserviceaccount.com"
-    ```
-    2. Grant the GSA access to the secrets:
-    ```bash
-    gcloud secrets add-iam-policy-binding rabbitmq-erlang-cookie --project=${GSA_PROJECT} --member="serviceAccount:${GSA_EMAIL}" --role="roles/secretmanager.secretAccessor"
-    gcloud secrets add-iam-policy-binding rabbitmq-admin-password --project=${GSA_PROJECT} --member="serviceAccount:${GSA_EMAIL}" --role="roles/secretmanager.secretAccessor"
-    ```
-    3.  **Bind KSA to GSA for Workload Identity**: This allows the KSA to act as the GSA.
-    ```bash
-    kubectl annotate serviceaccount rabbitmq-ksa       --namespace rabbitmq-qa       iam.gke.io/gcp-service-account=${GSA_EMAIL}       --overwrite # Add --overwrite if KSA already exists and you're re-annotating
+Verification steps are similar to traditional `kubectl` based ones, but you would target the namespace specified in your Krane deployment:
 
-    gcloud iam service-accounts add-iam-policy-binding ${GSA_EMAIL}       --role roles/iam.workloadIdentityUser       --member "serviceAccount:${GSA_PROJECT}.svc.id.goog[rabbitmq-qa/rabbitmq-ksa]"       --project=${GSA_PROJECT}
-    ```
-    4. Ensure the `serviceAccountName: rabbitmq-ksa` is uncommented and set in `kubernetes/rabbitmq/rabbitmq-statefulset.yaml`.
-
-### 5. Deploy to GKE
-
-Apply the namespace first, then all other manifests.
-
-```bash
-# 1. Apply the namespace
-kubectl apply -f namespace.yaml
-
-# 2. Apply all RabbitMQ manifests to the 'rabbitmq-qa' namespace
-kubectl apply -f kubernetes/rabbitmq/ -n rabbitmq-qa
-# Alternatively, if you prefer kustomize, create a kustomization.yaml
-```
-
-### 6. Verify Deployment
-
-Check the status of the pods, services, and persistent volume claims:
-
-```bash
-kubectl get all -n rabbitmq-qa
-kubectl get pvc -n rabbitmq-qa
-kubectl get pods -n rabbitmq-qa -w # Watch pods come up
-```
-Check logs of a RabbitMQ pod:
-```bash
-kubectl logs rabbitmq-0 -n rabbitmq-qa -c rabbitmq # Use -f to follow
-```
-Look for messages about successful clustering and server startup.
-Check that secrets are mounted:
-```bash
-kubectl exec -it rabbitmq-0 -n rabbitmq-qa -- ls -l /mnt/secrets-store/
-kubectl exec -it rabbitmq-0 -n rabbitmq-qa -- cat /mnt/secrets-store/erlang_cookie # (Don't print sensitive data like this in prod logs)
-```
+- `kubectl get all -n <%= bindings["namespace"] %>`
+- `kubectl get pvc -n <%= bindings["namespace"] %>`
+- `kubectl logs rabbitmq-0 -n <%= bindings["namespace"] %> -c rabbitmq` (use the correct pod name if different)
+- Check secrets mounted via CSI: `kubectl exec -it rabbitmq-0 -n <%= bindings["namespace"] %> -- ls -l /mnt/secrets-store/` (use the correct pod name)
 
 ## Horizontal Pod Autoscaling (HPA)
 
@@ -163,7 +159,8 @@ To automatically scale the RabbitMQ cluster based on load, a `HorizontalPodAutos
 
 ### HPA Prerequisites
 
-- **Metrics Server**: The Kubernetes Metrics Server must be installed and running in your cluster. GKE clusters usually have this pre-installed or available as an addon. If not, you can typically install it with:
+- **Metrics Server**: The Kubernetes Metrics Server must be installed and running in your cluster. GKE clusters usually have this pre-installed or available as an addon. Your Krane deployment should target a cluster where Metrics Server is active for HPA to function.
+  If needed, you can typically install it with:
   ```bash
   kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
   ```
@@ -174,27 +171,27 @@ To automatically scale the RabbitMQ cluster based on load, a `HorizontalPodAutos
 - **Node Discovery**: The RabbitMQ Kubernetes peer discovery plugin is designed to handle nodes joining and leaving the cluster, which is essential for autoscaling.
 - **Queue Data During Scale-Down**:
     - **Classic Mirrored Queues (Current Setup)**: When the cluster scales down, RabbitMQ nodes are removed. If classic mirrored queues (`ha-mode: all` or `ha-mode: exactly`) are used, RabbitMQ will attempt to re-synchronize mirrors from the departing node to remaining nodes. This process can take time and consume resources. For graceful shutdown, ensuring queues are fully synced before a node is terminated is ideal, though HPA-driven scale-down is typically abrupt. The configured `ha-sync-mode: automatic` helps.
-    - **Quorum Queues**: For environments with frequent scaling, Quorum Queues (available in RabbitMQ 3.8+) are generally recommended over classic mirrored queues. They offer better data safety and are designed with modern distributed systems principles in mind, handling node additions/removals more robustly. Migrating to Quorum Queues would involve changing the HA policies in `rabbitmq-configmap.yaml`.
-- **Monitoring**: Monitor HPA events (`kubectl describe hpa rabbitmq-hpa -n rabbitmq-qa`) and RabbitMQ cluster status during scaling operations.
+    - **Quorum Queues**: For environments with frequent scaling, Quorum Queues (available in RabbitMQ 3.8+) are generally recommended over classic mirrored queues. They offer better data safety and are designed with modern distributed systems principles in mind, handling node additions/removals more robustly. Migrating to Quorum Queues would involve changing the HA policies in `templates/rabbitmq-configmap.yaml.erb`.
+- **Monitoring**: Monitor HPA events (`kubectl describe hpa rabbitmq-hpa -n <%= bindings["namespace"] %>`) and RabbitMQ cluster status during scaling operations.
 
 ## Accessing RabbitMQ
 
 -   **Management UI**:
     Find the external IP address of the `rabbitmq-client` service:
     ```bash
-    kubectl get svc rabbitmq-client -n rabbitmq-qa
+    kubectl get svc rabbitmq-client -n <%= bindings["namespace"] %>
     ```
-    Access the UI at `http://<EXTERNAL_IP>:15672`. Log in with `admin` and the password you set (whose hash is in the ConfigMap).
+    Access the UI at `http://<EXTERNAL_IP>:15672`. Log in with `admin` and the password whose hash is defined by the `rabbitmq_admin_password_hash` binding.
 
 -   **Client Connections (AMQP)**:
     Use the same `<EXTERNAL_IP>` and port `5672`.
-    Connection String: `amqp://admin:YourPassword@<EXTERNAL_IP>:5672`
+    Connection String: `amqp://admin:YourPassword@<EXTERNAL_IP>:5672` (replace `YourPassword` with the actual password).
 
 ## High Availability Explained
 
--   **Queue Policies**: The `ha-all` policy in `definitions.json` (inside `rabbitmq-configmap.yaml`) ensures that all queues are mirrored across all available nodes. `ha-sync-mode: automatic` ensures new mirrors sync automatically.
--   **PodDisruptionBudget (PDB)**: `rabbitmq-pdb.yaml` ensures that at least 2 out of 3 pods remain available during voluntary disruptions (like node upgrades), minimizing downtime.
--   **StatefulSet**: Provides stable pod hostnames and persistent storage, crucial for RabbitMQ clustering and data durability.
+-   **Queue Policies**: The `ha-all` policy in `definitions.json` (inside `templates/rabbitmq-configmap.yaml.erb`) ensures that all queues are mirrored across all available nodes. `ha-sync-mode: automatic` ensures new mirrors sync automatically.
+-   **PodDisruptionBudget (PDB)**: `templates/rabbitmq-pdb.yaml.erb` ensures that at least 2 out of 3 pods remain available during voluntary disruptions (like node upgrades), minimizing downtime.
+-   **StatefulSet**: `templates/rabbitmq-statefulset.yaml.erb` provides stable pod hostnames and persistent storage, crucial for RabbitMQ clustering and data durability.
 
 ## Security Notes
 
@@ -205,7 +202,7 @@ To automatically scale the RabbitMQ cluster based on load, a `HorizontalPodAutos
 
 ## Scaling
 
--   To scale the cluster, change the `replicas` field in `kubernetes/rabbitmq/rabbitmq-statefulset.yaml` and re-apply. RabbitMQ clustering should handle the new nodes. Ensure your PVCs can be provisioned and that underlying resources (CPU, memory, disk IOPS) are sufficient.
+-   To scale the cluster, adjust the `rabbitmq_base_replicas` binding for the StatefulSet (if not using HPA or to set a new base for HPA) or rely on the HPA settings (`hpa_min_replicas`, `hpa_max_replicas`) in `templates/rabbitmq-hpa.yaml.erb`. Krane will apply these changes. RabbitMQ clustering should handle the new nodes. Ensure your PVCs can be provisioned and that underlying resources (CPU, memory, disk IOPS) are sufficient.
 
 ## Persistence
 
@@ -215,8 +212,8 @@ To automatically scale the RabbitMQ cluster based on load, a `HorizontalPodAutos
 
 -   **Pod Startup Issues**: Check pod logs (`kubectl logs ...`), events (`kubectl describe pod ...`), and status of PVCs.
 -   **Clustering Problems**:
-    -   Ensure the headless service (`rabbitmq-headless`) is correctly configured.
-    -   Verify pods can resolve each other's FQDNs (e.g., `rabbitmq-0.rabbitmq-headless.rabbitmq-qa.svc.cluster.local`).
+    -   Ensure the headless service (`templates/rabbitmq-headless-svc.yaml.erb`) is correctly configured.
+    -   Verify pods can resolve each other's FQDNs (e.g., `rabbitmq-0.rabbitmq-headless.<%= bindings["namespace"] %>.svc.cluster.local`).
     -   Check the Erlang cookie is identical across all nodes (mounted correctly from Secret Manager).
     -   Review NetworkPolicies to ensure they don't block inter-node communication on ports 4369 (epmd) and 25672 (distribution).
 -   **Secret Store CSI Driver Issues**:

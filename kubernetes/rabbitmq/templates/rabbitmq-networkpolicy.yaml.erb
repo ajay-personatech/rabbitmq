@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: rabbitmq-default-deny
-  namespace: rabbitmq-qa
+  namespace: <%= bindings["namespace"] %>
 spec:
   podSelector:
     matchLabels:
@@ -17,7 +17,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: rabbitmq-allow-traffic
-  namespace: rabbitmq-qa
+  namespace: <%= bindings["namespace"] %>
 spec:
   podSelector:
     matchLabels:
@@ -46,7 +46,7 @@ spec:
           # This label should be on your 'rabbitmq-qa' namespace or remove namespaceSelector to allow all namespaces (less secure)
           # For GKE, namespaces might have a label like 'kubernetes.io/metadata.name=rabbitmq-qa' by default.
           # Or you can add your own label to the namespace e.g. 'name: rabbitmq-qa'
-          kubernetes.io/metadata.name: rabbitmq-qa # Or your custom namespace label
+          kubernetes.io/metadata.name: <%= bindings["namespace"] %> # Or your custom namespace label
       # podSelector: {} # To allow all pods in the namespace
       # podSelector: # Example: Allow pods with label 'app: my-client-app'
       #   matchLabels:
