@@ -1,0 +1,37 @@
+# Bindings for the 'staging' environment
+# --- Namespace and GCP Project ---
+namespace: "rabbitmq-staging"
+gcp_project_id: "your-gcp-project-id-staging" # Replace with your actual Staging GCP project ID
+
+# --- Secret Names in GCP Secret Manager (Staging specific) ---
+erlang_cookie_secret_name: "staging-rabbitmq-erlang-cookie"
+admin_password_secret_name: "staging-rabbitmq-admin-password" # For SecretProviderClass to fetch
+
+# --- RabbitMQ Application Behavior (Staging Scale) ---
+rabbitmq_base_replicas: 3 # Initial/base number of RabbitMQ pods
+hpa_min_replicas: 3       # HPA: Minimum replicas
+hpa_max_replicas: 6       # HPA: Maximum replicas
+rabbitmq_admin_password_hash: "PLEASE_REPLACE_WITH_ACTUAL_STAGING_ADMIN_HASH" # Generate with: docker run -it --rm rabbitmq:3.12 rabbitmqctl hash_password "your_staging_password"
+
+# --- Container Image Configuration ---
+rabbitmq_image_repository: "rabbitmq" # Or your specific GAR/GCR path like "asia-south1-docker.pkg.dev/your-gcp-project-id-staging/rabbitmq"
+rabbitmq_image_tag: "3.12-management" # Consider using a specific, tested tag for staging
+
+# --- Resource Requests and Limits (Staging Scale) ---
+# (Adjust these based on your Staging environment's capacity and needs - should be closer to production)
+rabbitmq_cpu_request: "500m"   # CPU request per RabbitMQ pod
+rabbitmq_memory_request: "1Gi" # Memory request per RabbitMQ pod
+rabbitmq_cpu_limit: "1"         # CPU limit per RabbitMQ pod (e.g., "1000m" or "1")
+rabbitmq_memory_limit: "2Gi"   # Memory limit per RabbitMQ pod
+
+# --- Optional & Other Configurations ---
+rabbitmq_ksa_name: "rabbitmq-ksa" # Kubernetes Service Account for RabbitMQ pods
+app_env: "staging"                # Environment name, can be used for conditional logic or naming
+
+# Placeholders for rabbitmq-secret.yaml.erb (if used as a fallback or for other secrets)
+erlang_cookie_placeholder: "c3RhZ2luZy1lcmxhbmctY29va2llLXBsYWNlaG9sZGVyLWJhc2U2NA==" # echo -n "staging-erlang-cookie-placeholder" | base64
+admin_password_placeholder: "c3RhZ2luZy1hZG1pbi1wYXNzd29yZC1wbGFjZWhvbGRlci1iYXNlNjQ=" # echo -n "staging-admin-password-placeholder" | base64
+
+# Example for LoadBalancer annotations (if they differ for Staging)
+# client_svc_annotations:
+#   cloud.google.com/load-balancer-type: "External" # Staging might use an external LB

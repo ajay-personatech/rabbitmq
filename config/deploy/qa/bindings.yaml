@@ -1,0 +1,38 @@
+# Bindings for the 'qa' environment
+# --- Namespace and GCP Project ---
+namespace: "rabbitmq-qa"
+gcp_project_id: "your-gcp-project-id-qa" # Replace with your actual QA GCP project ID
+
+# --- Secret Names in GCP Secret Manager (QA specific) ---
+erlang_cookie_secret_name: "qa-rabbitmq-erlang-cookie"
+admin_password_secret_name: "qa-rabbitmq-admin-password" # For SecretProviderClass to fetch
+
+# --- RabbitMQ Application Behavior (QA Scale) ---
+rabbitmq_base_replicas: 2 # Initial/base number of RabbitMQ pods
+hpa_min_replicas: 2       # HPA: Minimum replicas
+hpa_max_replicas: 4       # HPA: Maximum replicas
+rabbitmq_admin_password_hash: "PLEASE_REPLACE_WITH_ACTUAL_QA_ADMIN_HASH" # Generate with: docker run -it --rm rabbitmq:3.12 rabbitmqctl hash_password "your_qa_password"
+
+# --- Container Image Configuration ---
+rabbitmq_image_repository: "rabbitmq" # Or your specific GAR/GCR path like "asia-south1-docker.pkg.dev/your-gcp-project-id-qa/rabbitmq"
+rabbitmq_image_tag: "3.12-management"
+
+# --- Resource Requests and Limits (QA Scale) ---
+# (Adjust these based on your QA environment's capacity and needs)
+rabbitmq_cpu_request: "250m"   # CPU request per RabbitMQ pod
+rabbitmq_memory_request: "512Mi" # Memory request per RabbitMQ pod
+rabbitmq_cpu_limit: "500m"      # CPU limit per RabbitMQ pod
+rabbitmq_memory_limit: "1Gi"   # Memory limit per RabbitMQ pod
+
+# --- Optional & Other Configurations ---
+rabbitmq_ksa_name: "rabbitmq-ksa" # Kubernetes Service Account for RabbitMQ pods
+app_env: "qa"                     # Environment name, can be used for conditional logic or naming
+
+# Placeholders for rabbitmq-secret.yaml.erb (if used as a fallback or for other secrets)
+erlang_cookie_placeholder: "cWEtZXJsYW5nLWNvb2tpZS1wbGFjZWhvbGRlci1iYXNlNjQ=" # echo -n "qa-erlang-cookie-placeholder" | base64
+admin_password_placeholder: "cWEtYWRtaW4tcGFzc3dvcmQtcGxhY2Vob2xkZXItYmFzZTY0" # echo -n "qa-admin-password-placeholder" | base64
+
+# Example for LoadBalancer annotations (if they differ for QA)
+# client_svc_annotations:
+#   cloud.google.com/load-balancer-type: "Internal"
+#   networking.gke.io/load-balancer-type: "Internal"

@@ -54,66 +54,57 @@ These manifests are designed to be deployed using Krane, leveraging ERB template
     - The GSA used by Workload Identity (linked to `rabbitmq_ksa_name`) needs `roles/secretmanager.secretAccessor` for the specified secrets.
     - (Optional) If using private images from GCR/GAR, the GSA also needs `roles/artifactregistry.reader`.
 
-### 2. Environment Configuration (Bindings)
+### Environment Configuration via `bindings.yaml`
 
-Krane uses a mechanism (often a `bindings.yaml` file or environment variables) to provide values to the ERB templates. You will need to define the following bindings for each target environment (e.g., qa, staging, demo, testing):
+To manage environment-specific values for the ERB templates, this project now includes a recommended structure using `bindings.yaml` files located in `config/deploy/<environment_name>/`.
 
-**Required Bindings:**
+**Example Structure:**
 
-- `namespace`: (String) The Kubernetes namespace to deploy to (e.g., `"rabbitmq-qa"`, `"rabbitmq-staging"`). All resources will be deployed into this namespace.
-- `gcp_project_id`: (String) Your Google Cloud Project ID where secrets are stored (used by `rabbitmq-secret-provider-class.yaml.erb`).
-- `erlang_cookie_secret_name`: (String, Default: `"rabbitmq-erlang-cookie"`) Name of the secret in GCP Secret Manager for the Erlang cookie.
-- `admin_password_secret_name`: (String, Default: `"rabbitmq-admin-password"`) Name of the secret in GCP Secret Manager for the admin password (used by SecretProviderClass).
-
-**Application Behavior Bindings:**
-
-- `rabbitmq_base_replicas`: (Integer, Default: `3`) Initial number of RabbitMQ pods for the StatefulSet.
-- `hpa_min_replicas`: (Integer, Default: `3`) Minimum replicas for HPA.
-- `hpa_max_replicas`: (Integer, Default: `10`) Maximum replicas for HPA.
-- `rabbitmq_image_repository`: (String, Default: `"rabbitmq"`) The container image repository.
-- `rabbitmq_image_tag`: (String, Default: `"3.12-management"`) The container image tag.
-- `rabbitmq_admin_password_hash`: (String, Default: `"PLEASE_REPLACE_WITH_SECURE_HASH"`) The hashed admin password for `definitions.json` in the ConfigMap.
-  Generate using: `docker run -it --rm rabbitmq:3.12 rabbitmqctl hash_password "YourStrongPasswordHere"`
-  This hash should be for the password whose plain text is stored in the GCP secret referenced by `admin_password_secret_name` if you intend for them to match. The primary mechanism for RabbitMQ login will be this hash.
-
-**Resource Bindings (with defaults):**
-
-- `rabbitmq_cpu_request`: (String, Default: `"500m"`) CPU request per RabbitMQ pod.
-- `rabbitmq_memory_request`: (String, Default: `"1Gi"`) Memory request per RabbitMQ pod.
-- `rabbitmq_cpu_limit`: (String, Default: `"1"`) CPU limit per RabbitMQ pod.
-- `rabbitmq_memory_limit`: (String, Default: `"2Gi"`) Memory limit per RabbitMQ pod.
-
-**Optional Bindings (with defaults):**
-
-- `rabbitmq_ksa_name`: (String, Default: `"rabbitmq-ksa"`) Kubernetes Service Account name to use for the pods. This KSA should be configured for Workload Identity by binding it to a Google Service Account (GSA) that has permissions to access the specified secrets in GCP Secret Manager.
-  **Manual Setup for Workload Identity (one-time or per new KSA/GSA):**
-    1.  Create KSA: `kubectl create serviceaccount <%= bindings["rabbitmq_ksa_name"] || "rabbitmq-ksa" %> --namespace <%= bindings["namespace"] %>`
-    2.  Create GSA (e.g., `rabbitmq-gsa@<%= bindings["gcp_project_id"] %>.iam.gserviceaccount.com`).
-    3.  Grant GSA access to secrets (see IAM Permissions above).
-    4.  Bind KSA to GSA:
-        ```bash
-        gcloud iam service-accounts add-iam-policy-binding \
-          --role roles/iam.workloadIdentityUser \
-          --member "serviceAccount:<%= bindings["gcp_project_id"] %>.svc.id.goog[<%= bindings["namespace"] %>/<%= bindings["rabbitmq_ksa_name"] || "rabbitmq-ksa" %>]" \
-          rabbitmq-gsa@<%= bindings["gcp_project_id"] %>.iam.gserviceaccount.com # Replace with your GSA email
-        kubectl annotate serviceaccount <%= bindings["rabbitmq_ksa_name"] || "rabbitmq-ksa" %> \
-          --namespace <%= bindings["namespace"] %> \
-          iam.gke.io/gcp-service-account=rabbitmq-gsa@<%= bindings["gcp_project_id"] %>.iam.gserviceaccount.com # Replace with your GSA email
-        ```
-- `app_env`: (String) Environment name (e.g., `"qa"`, `"staging"`). Can be used for conditional logic in templates or naming conventions. (Example usage for cluster name or annotations is commented in templates).
-- `rabbitmq_erlang_cookie_base64`: (String, Default: `"PLACEHOLDER_ERLANG_COOKIE"`) Base64 encoded Erlang cookie for `templates/rabbitmq-secret.yaml.erb` (if used).
-- `rabbitmq_admin_password_base64`: (String, Default: `"PLACEHOLDER_ADMIN_PASSWORD_BASE64"`) Base64 encoded admin password for `templates/rabbitmq-secret.yaml.erb` (if used).
-
-**Example `bindings.yaml` snippet (conceptual):**
-```yaml
-# For QA environment
-namespace: "rabbitmq-qa"
-gcp_project_id: "my-gcp-project-qa"
-erlang_cookie_secret_name: "qa-rabbitmq-erlang-cookie"
-admin_password_secret_name: "qa-rabbitmq-admin-password"
-rabbitmq_base_replicas: 3
-# ... other qa specific values
 ```
+config/
+└── deploy/
+    ├── qa/
+    │   └── bindings.yaml       # Bindings for the QA environment
+    └── staging/
+        └── bindings.yaml    # Bindings for the Staging environment
+    #└── demo/
+    #    └── bindings.yaml       # Example for a Demo environment
+    #└── testing/
+    #    └── bindings.yaml    # Example for a Testing environment
+```
+
+- Example `bindings.yaml` files have been provided for `qa` (`config/deploy/qa/bindings.yaml`) and `staging` (`config/deploy/staging/bindings.yaml`).
+- **These files are illustrative examples.** You **MUST** review and update them with your actual environment-specific values, especially for:
+    - `gcp_project_id`
+    - Secret names (`erlang_cookie_secret_name`, `admin_password_secret_name`)
+    - `rabbitmq_admin_password_hash`
+    - Image repository if using a private registry for RabbitMQ images.
+    - Resource requests and limits.
+- You can create similar `bindings.yaml` files for other environments like `demo` and `testing` by copying one of the examples and adjusting the values accordingly.
+- Your Krane deployment process will need to be configured to load the appropriate `bindings.yaml` file for the target environment to make these values available to the ERB templates. How Krane ingests these bindings (e.g., via a specific command-line flag, by convention, or loaded into environment variables that ERB can access) depends on your Krane setup. The ERB templates currently expect these values to be accessible via a hash named `bindings` (e.g., `<%= bindings['namespace'] %>`).
+
+**List of Expected Bindings (to be defined in your `bindings.yaml`):**
+
+(This list is largely the same as before, but now it's contextualized with the `bindings.yaml` files)
+- `namespace`: (String) The Kubernetes namespace.
+- `gcp_project_id`: (String) GCP Project ID.
+- `erlang_cookie_secret_name`: (String) Name of the Erlang cookie secret in GCP Secret Manager.
+- `admin_password_secret_name`: (String) Name of the admin password secret in GCP Secret Manager.
+- `rabbitmq_base_replicas`: (Integer) Initial RabbitMQ pods.
+- `hpa_min_replicas`: (Integer) HPA minimum replicas.
+- `hpa_max_replicas`: (Integer) HPA maximum replicas.
+- `rabbitmq_admin_password_hash`: (String) Hashed admin password for `definitions.json`.
+- `rabbitmq_image_repository`: (String) Container image repository.
+- `rabbitmq_image_tag`: (String) Container image tag.
+- `rabbitmq_cpu_request`: (String) CPU request.
+- `rabbitmq_memory_request`: (String) Memory request.
+- `rabbitmq_cpu_limit`: (String) CPU limit.
+- `rabbitmq_memory_limit`: (String) Memory limit.
+- `rabbitmq_ksa_name`: (String, Optional) Kubernetes Service Account name.
+- `app_env`: (String, Optional) Environment name.
+- `erlang_cookie_placeholder`: (String, Optional) Placeholder for `templates/rabbitmq-secret.yaml.erb`.
+- `admin_password_placeholder`: (String, Optional) Placeholder for `templates/rabbitmq-secret.yaml.erb`.
+# Add any other custom bindings your ERB templates might expect here.
 
 ### 3. Create Secrets in GCP Secret Manager (one-time)
 
