@@ -4,38 +4,6 @@ metadata:
   name: rabbitmq-config
   namespace: <%= bindings["namespace"] %>
 data:
-  rabbitmq.conf: |
-    # To template cluster name (e.g., based on environment):
-    # cluster_name = rabbit@<%= bindings["app_env"] || "default_env" %>
-    # Clustering configuration
-    cluster_formation.peer_discovery_backend = k8s
-    cluster_formation.k8s.host = kubernetes.default.svc.cluster.local
-    cluster_formation.k8s.address_type = hostname
-    cluster_formation.k8s.service_name = rabbitmq-headless
-    # Alternative if using FQDN:
-    # cluster_formation.k8s.hostname_suffix = .rabbitmq-headless.rabbitmq-qa.svc.cluster.local
-    # cluster_formation.node_cleanup.interval = 60
-    # cluster_formation.node_cleanup.only_log_warning = true
-    # cluster_kicker.interval = 60
-
-    # Default user/pass - It's recommended to change these or manage users via HTTP API or definitions
-    # For production, REMOVE these lines and manage users/permissions explicitly.
-    # Secrets should be used for credentials.
-    # default_user = guest
-    # default_pass = guest
-
-    # HiPE compilation (optional, can increase startup time but might improve performance)
-    # hipe_compile = true
-
-    # Heartbeat interval
-    heartbeat = 60
-
-    # Memory and disk watermarks
-    vm_memory_high_watermark.relative = 0.7
-    disk_free_limit.absolute = 50MB
-
-    # Management plugin
-    management.load_definitions = /etc/rabbitmq/definitions.json
   definitions.json: |
     {
       "users": [

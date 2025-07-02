@@ -13,6 +13,11 @@ FROM rabbitmq:3.12-management-alpine
 LABEL maintainer="your-email@example.com" # Replace with your email or team alias
 LABEL description="Custom RabbitMQ image based on official Alpine version."
 
+# Copy custom rabbitmq.conf if you have one
+# This will replace the default rabbitmq.conf in the base image.
+# Ensure my-custom-rabbitmq.conf is in the same directory as the Dockerfile (the build context).
+COPY --chown=rabbitmq:rabbitmq my-custom-rabbitmq.conf /etc/rabbitmq/rabbitmq.conf
+
 # Example: If you had custom plugins to add (uncomment and adjust)
 # Ensure your plugins are compatible with the RabbitMQ version.
 # COPY --chown=rabbitmq:rabbitmq plugins/ /opt/rabbitmq/plugins/

@@ -93,6 +93,58 @@ rabbitmq_image_tag: "latest" # Or your specific build tag
 
 The ERB templates for the StatefulSet (`kubernetes/rabbitmq/templates/rabbitmq-statefulset.yaml.erb`) will then use these binding values to pull your custom image.
 
+### Alternative: Baking `rabbitmq.conf` into the Docker Image
+
+While the default setup uses a Kubernetes ConfigMap to supply `rabbitmq.conf`, `definitions.json`, and `enabled_plugins`, you also have the option to bake your primary `rabbitmq.conf` directly into your custom Docker Image. This approach has been partially prepared in this repository.
+
+**How it Works if Fully Implemented:**
+
+1.  **Custom Configuration File**:
+    -   A file named `my-custom-rabbitmq.conf` is provided in the `docker/rabbitmq/` directory. You would populate this with your desired base RabbitMQ configurations.
+    *   Example content in `docker/rabbitmq/my-custom-rabbitmq.conf`:
+        ```ini
+        # docker/rabbitmq/my-custom-rabbitmq.conf
+        default_vhost = /customvhost
+        consumer_timeout = 30000
+        ```
+
+2.  **Dockerfile Modification**:
+    -   The `docker/rabbitmq/Dockerfile` has been updated to include a `COPY` instruction:
+        ```dockerfile
+        COPY --chown=rabbitmq:rabbitmq my-custom-rabbitmq.conf /etc/rabbitmq/rabbitmq.conf
+        ```
+    -   When you build your custom Docker image, this `my-custom-rabbitmq.conf` becomes `/etc/rabbitmq/rabbitmq.conf` inside the image.
+
+3.  **Kubernetes ConfigMap (`rabbitmq-configmap.yaml.erb`) Changes**:
+    -   The `data` section for `rabbitmq.conf` has been removed from this ConfigMap template (`kubernetes/rabbitmq/templates/rabbitmq-configmap.yaml.erb`).
+    -   The ConfigMap now primarily serves `definitions.json` and `enabled_plugins`.
+
+4.  **Kubernetes StatefulSet (`rabbitmq-statefulset.yaml.erb`) Changes**:
+    -   The `config-volume` definition (sourced from the `rabbitmq-config` ConfigMap) in the StatefulSet template (`kubernetes/rabbitmq/templates/rabbitmq-statefulset.yaml.erb`) has been modified to no longer project the `rabbitmq.conf` key.
+    -   This means the pods will use the `/etc/rabbitmq/rabbitmq.conf` from the Docker image, not from the ConfigMap.
+
+**Pros of Baking `rabbitmq.conf` into the Image:**
+
+-   **Immutability**: The core `rabbitmq.conf` becomes an immutable part of your specific image version.
+-   **Consistency**: Ensures all containers from that image version share the exact same base configuration.
+-   **Simplified ConfigMap**: The ConfigMap becomes simpler, focusing only on dynamic definitions or plugin enablement.
+
+**Cons of Baking `rabbitmq.conf` into the Image:**
+
+-   **Less Flexibility**: Changes to `rabbitmq.conf` require rebuilding and redeploying the Docker image, which is a slower process than updating a ConfigMap and performing a rolling restart of pods.
+-   **Environment-Specific Core Configs**: If your base `rabbitmq.conf` needs to differ significantly per environment (beyond what ENV variable overrides can achieve), you might need different Docker images or a more complex Dockerfile, whereas ConfigMaps can be more easily templated per environment.
+
+**When to Choose:**
+
+-   **Baked-in `rabbitmq.conf`**: Good for very stable, universal base configurations that define the fundamental behavior of your RabbitMQ nodes and are unlikely to change frequently.
+-   **ConfigMap for `rabbitmq.conf` (Previous Default)**: Generally more flexible for most use cases, especially if you anticipate needing to tweak configurations or have environment-specific variations that are not easily handled by environment variable overrides alone.
+
+**Current State in this Repository:**
+The repository is now set up to demonstrate the **baked-in `rabbitmq.conf`** approach. If you prefer to manage `rabbitmq.conf` via ConfigMap for more flexibility, you would need to:
+1. Revert the changes made to `docker/rabbitmq/Dockerfile` (remove the COPY line for `my-custom-rabbitmq.conf`).
+2. Revert the changes to `kubernetes/rabbitmq/templates/rabbitmq-configmap.yaml.erb` (re-add the `rabbitmq.conf` data section).
+3. Revert the changes to `kubernetes/rabbitmq/templates/rabbitmq-statefulset.yaml.erb` (re-add `rabbitmq.conf` to the `items` in `config-volume`).
+
 ## Setup and Deployment with Krane
 
 These manifests are designed to be deployed using Krane, leveraging ERB templates for environment-specific configurations.
