@@ -75,7 +75,7 @@ config/
 
 - Example `bindings.yaml` files have been provided for `qa` (`config/deploy/qa/bindings.yaml`) and `staging` (`config/deploy/staging/bindings.yaml`).
 - **These files are illustrative examples.** You **MUST** review and update them with your actual environment-specific values, especially for:
-    - `gcp_project_id`
+    - `gcp_project_id` (examples use `"phoenix-development-351409"` but verify for each environment)
     - Secret names (`erlang_cookie_secret_name`, `admin_password_secret_name`)
     - `rabbitmq_admin_password_hash`
     - Image repository if using a private registry for RabbitMQ images.
@@ -94,7 +94,7 @@ config/
 - `hpa_min_replicas`: (Integer) HPA minimum replicas.
 - `hpa_max_replicas`: (Integer) HPA maximum replicas.
 - `rabbitmq_admin_password_hash`: (String) Hashed admin password for `definitions.json`.
-- `rabbitmq_image_repository`: (String) Container image repository.
+- `rabbitmq_image_repository`: (String) The full container image repository path (e.g., `"asia-south1-docker.pkg.dev/phoenix-development-351409/rabbitmq-qa"`). This is constructed using your artifact repository location, GCP project ID, and image name.
 - `rabbitmq_image_tag`: (String) Container image tag.
 - `rabbitmq_cpu_request`: (String) CPU request.
 - `rabbitmq_memory_request`: (String) Memory request.
