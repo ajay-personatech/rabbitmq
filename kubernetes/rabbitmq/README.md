@@ -65,15 +65,17 @@ config/
 └── deploy/
     ├── qa/
     │   └── bindings.yaml       # Bindings for the QA environment
-    └── staging/
-        └── bindings.yaml    # Bindings for the Staging environment
-    #└── demo/
-    #    └── bindings.yaml       # Example for a Demo environment
-    #└── testing/
-    #    └── bindings.yaml    # Example for a Testing environment
+    ├── staging/
+    │   └── bindings.yaml    # Bindings for the Staging environment
+    ├── feature/
+    │   └── bindings.yaml    # Bindings for a Feature environment
+    └── demo/
+        └── bindings.yaml       # Bindings for a Demo environment
+    # You can add more environments like 'testing' following this pattern.
 ```
 
 - Example `bindings.yaml` files have been provided for `qa` (`config/deploy/qa/bindings.yaml`) and `staging` (`config/deploy/staging/bindings.yaml`).
+- Example files for `feature` (`config/deploy/feature/bindings.yaml`) and `demo` (`config/deploy/demo/bindings.yaml`) have also been added, adapting the QA/Staging examples.
 - **These files are illustrative examples.** You **MUST** review and update them with your actual environment-specific values, especially for:
     - `gcp_project_id` (examples use `"phoenix-development-351409"` but verify for each environment)
     - Secret names (`erlang_cookie_secret_name`, `admin_password_secret_name`)
