@@ -14,8 +14,8 @@ hpa_max_replicas: 4       # HPA: Maximum replicas
 rabbitmq_admin_password_hash: "PLEASE_REPLACE_WITH_ACTUAL_QA_ADMIN_HASH" # Generate with: docker run -it --rm rabbitmq:3.12 rabbitmqctl hash_password "your_qa_password"
 
 # --- Container Image Configuration ---
-rabbitmq_image_repository: "asia-south1-docker.pkg.dev/phoenix-development-351409/rabbitmq-qa"
-rabbitmq_image_tag: "3.12-management"
+rabbitmq_image_repository: "asia-south1-docker.pkg.dev/phoenix-development-351409/custom-rabbitmq"
+rabbitmq_image_tag: "latest" # Replace with your specific build tag
 
 # --- Resource Requests and Limits (QA Scale) ---
 # (Adjust these based on your QA environment's capacity and needs)

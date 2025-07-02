@@ -34,6 +34,65 @@ This directory contains Kubernetes manifests to deploy a fault-tolerant and secu
 - `templates/rabbitmq-networkpolicy.yaml.erb`: Network policies for restricting traffic.
 - `templates/rabbitmq-secret.yaml.erb`: (Legacy placeholder, Erlang cookie now via CSI) ERB template for placeholder Kubernetes Secret. Useful if not using CSI for all secrets or for other manually managed secrets.
 
+
+## Building and Using a Custom RabbitMQ Docker Image
+
+This project includes a `Dockerfile` at `../../docker/rabbitmq/Dockerfile` (relative to this READMEs location, or adjust path as needed) to build a custom RabbitMQ image. While the official RabbitMQ images are secure and well-maintained (and used as a base), building your own allows for:
+- Pinning to specific, vetted LTS versions.
+- Baking in custom plugins or configurations if needed in the future.
+- Standardizing your image supply chain and storing images in your own Artifact Registry.
+
+The provided `Dockerfile` uses `rabbitmq:3.12-management-alpine` as a base.
+
+### 1. Build the Docker Image
+
+Navigate to the directory containing the `Dockerfile` for RabbitMQ (e.g., `docker/rabbitmq/` from the project root) and run the build command:
+
+\`\`\`bash
+# From the project root directory:
+cd docker/rabbitmq
+
+# Replace with your desired image name and tag
+export IMAGE_NAME="asia-south1-docker.pkg.dev/phoenix-development-351409/custom-rabbitmq:latest" # Or your specific image name and tag like v1.0.0
+
+docker build -t ${IMAGE_NAME} .
+
+# (Optional) To return to the project root:
+# cd ../..
+\`\`\`
+
+### 2. Push the Image to Artifact Registry
+
+Ensure you have authenticated Docker to your GCP Artifact Registry.
+
+\`\`\`bash
+# This command assumes IMAGE_NAME is still set from the build step
+docker push ${IMAGE_NAME}
+\`\`\`
+If you havent configured Docker for Artifact Registry, you might need to run:
+\`\`\`bash
+# gcloud auth configure-docker asia-south1-docker.pkg.dev
+\`\`\`
+
+### 3. Update Bindings to Use the Custom Image
+
+After building and pushing your custom image, you **MUST** update the `bindings.yaml` files for each of your environments (`config/deploy/<env>/bindings.yaml`) to point to this new image:
+
+-   **`rabbitmq_image_repository`**: Set this to the path of your image in Artifact Registry, without the tag.
+    (e.g., `asia-south1-docker.pkg.dev/phoenix-development-351409/custom-rabbitmq`)
+-   **`rabbitmq_image_tag`**: Set this to the tag you used during the build (e.g., `latest`, `v1.0.0`).
+
+**Example update in a `bindings.yaml` file:**
+
+\`\`\`yaml
+# ... other bindings ...
+rabbitmq_image_repository: "asia-south1-docker.pkg.dev/phoenix-development-351409/custom-rabbitmq"
+rabbitmq_image_tag: "latest" # Or your specific build tag
+# ... other bindings ...
+\`\`\`
+
+The ERB templates for the StatefulSet (`kubernetes/rabbitmq/templates/rabbitmq-statefulset.yaml.erb`) will then use these binding values to pull your custom image.
+
 ## Setup and Deployment with Krane
 
 These manifests are designed to be deployed using Krane, leveraging ERB templates for environment-specific configurations.
