@@ -1,6 +1,6 @@
 # Bindings for the 'qa' environment
 # --- Namespace and GCP Project ---
-namespace: "rabbitmq-qa"
+namespace: "qa-rabbitmq-new"
 gcp_project_id: "phoenix-development-351409" # Replace with your actual QA GCP project ID
 
 # --- Secret Names in GCP Secret Manager (QA specific) ---

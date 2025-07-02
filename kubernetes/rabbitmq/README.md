@@ -86,7 +86,7 @@ config/
 **List of Expected Bindings (to be defined in your `bindings.yaml`):**
 
 (This list is largely the same as before, but now it's contextualized with the `bindings.yaml` files)
-- `namespace`: (String) The Kubernetes namespace.
+- `namespace`: (String) The Kubernetes namespace (e.g., `"qa-rabbitmq-new"`, `"staging-rabbitmq-new"`).
 - `gcp_project_id`: (String) GCP Project ID.
 - `erlang_cookie_secret_name`: (String) Name of the Erlang cookie secret in GCP Secret Manager.
 - `admin_password_secret_name`: (String) Name of the admin password secret in GCP Secret Manager.

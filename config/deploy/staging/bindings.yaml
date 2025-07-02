@@ -1,6 +1,6 @@
 # Bindings for the 'staging' environment
 # --- Namespace and GCP Project ---
-namespace: "rabbitmq-staging"
+namespace: "staging-rabbitmq-new"
 gcp_project_id: "phoenix-development-351409" # Replace with your actual Staging GCP project ID
 
 # --- Secret Names in GCP Secret Manager (Staging specific) ---
