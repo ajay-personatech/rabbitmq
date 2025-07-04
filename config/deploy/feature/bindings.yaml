@@ -1,0 +1,38 @@
+# Bindings for a .feature. environment (adapt as needed)
+# --- Namespace and GCP Project ---
+namespace: "feature-rabbitmq" # Or e.g., feature-<%= bindings["branch_name"] %>-rabbitmq
+gcp_project_id: "phoenix-development-351409" # Verify/update for feature branches if different
+
+# --- Secret Names in GCP Secret Manager (QA specific) ---
+erlang_cookie_secret_name: "feature-rabbitmq-erlang-cookie" # Or use qa- version if shared
+admin_password_secret_name: "feature-rabbitmq-admin-password" # Or use qa- version if shared
+
+# --- RabbitMQ Application Behavior (QA Scale) ---
+rabbitmq_base_replicas: 1 # Initial/base number of RabbitMQ pods
+hpa_min_replicas: 1       # HPA: Minimum replicas
+hpa_max_replicas: 2       # HPA: Maximum replicas
+rabbitmq_admin_password_hash: "PLEASE_REPLACE_WITH_FEATURE_ADMIN_HASH_OR_USE_QA_DEFAULT" # Generate with: docker run -it --rm rabbitmq:3.12 rabbitmqctl hash_password "your_qa_password"
+
+# --- Container Image Configuration ---
+rabbitmq_image_repository: "asia-south1-docker.pkg.dev/phoenix-development-351409/custom-rabbitmq"
+rabbitmq_image_tag: "latest" # Replace with your specific build tag
+
+# --- Resource Requests and Limits (QA Scale) ---
+# (Adjust these based on your QA environment's capacity and needs)
+rabbitmq_cpu_request: "100m"   # CPU request per RabbitMQ pod
+rabbitmq_memory_request: "256Mi" # Memory request per RabbitMQ pod
+rabbitmq_cpu_limit: "250m"      # CPU limit per RabbitMQ pod
+rabbitmq_memory_limit: "512Mi"   # Memory limit per RabbitMQ pod
+
+# --- Optional & Other Configurations ---
+rabbitmq_ksa_name: "rabbitmq-ksa" # Kubernetes Service Account for RabbitMQ pods
+app_env: "feature"                     # Environment name, can be used for conditional logic or naming
+
+# Placeholders for rabbitmq-secret.yaml.erb (if used as a fallback or for other secrets)
+erlang_cookie_placeholder: "ZmVhdHVyZS1lcmxhbmctY29va2llLXBsYWNlaG9sZGVyLWJhc2U2NA==" # echo -n "feature-erlang-cookie-placeholder" | base64
+admin_password_placeholder: "ZmVhdHVyZS1hZG1pbi1wYXNzd29yZC1wbGFjZWhvbGRlci1iYXNlNjQ==" # echo -n "feature-admin-password-placeholder" | base64
+
+# Example for LoadBalancer annotations (if they differ for QA)
+# client_svc_annotations:
+#   cloud.google.com/load-balancer-type: "Internal"
+#   networking.gke.io/load-balancer-type: "Internal"

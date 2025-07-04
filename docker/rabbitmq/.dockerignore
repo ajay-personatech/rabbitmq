@@ -1,0 +1,30 @@
+# Git files
+.git
+.gitignore
+
+# Docker files
+Dockerfile # It's part of the context but often listed so it's not accidentally copied if context is './' from parent dir
+
+# Markdown files (unless you want to bake them into the image for some reason)
+*.md
+
+# Any local configuration or secrets that should not be in the image
+config/
+secrets/
+*.env
+*.pem
+*.key
+
+# Build artifacts or local user files
+target/
+build/
+.DS_Store
+Thumbs.db
+*.log
+
+# IDE settings files
+.idea/
+.vscode/
+*.iml
+*.project
+*.classpath

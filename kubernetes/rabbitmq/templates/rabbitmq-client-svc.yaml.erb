@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-client
+  namespace: <%= bindings["namespace"] %>
+  labels:
+    app: rabbitmq
+  # Example for templating annotations based on environment:
+  # <% if bindings["app_env"] == "production" %>
+  # annotations:
+  #   cloud.google.com/load-balancer-type: "External"
+  # <% else %>
+  # annotations:
+  #   cloud.google.com/load-balancer-type: "Internal"
+  #   networking.gke.io/load-balancer-type: "Internal" # For GKE newer versions
+  # <% end %>
+  # annotations:
+    # Example for GCP Internal Load Balancer:
+    # cloud.google.com/load-balancer-type: "Internal"
+    # networking.gke.io/load-balancer-type: "Internal" # For GKE newer versions
+    # For specific health check configurations on GCP LoadBalancer:
+    # cloud.google.com/neg: '{"exposed_ports": {"15672":{}}}' # Expose management port for health check
+spec:
+  type: LoadBalancer # Or NodePort, or ClusterIP (if using Ingress)
+  ports:
+  - name: amqp
+    port: 5672
+    targetPort: amqp
+    protocol: TCP
+  - name: management-ui
+    port: 15672 # Standard management UI port
+    targetPort: management
+    protocol: TCP
+  # - name: amqps # If you configure TLS on RabbitMQ
+  #   port: 5671
+  #   targetPort: 5671 # Assuming your RabbitMQ is configured for AMQPS on this target
+  #   protocol: TCP
+  selector:
+    app: rabbitmq # Selects the pods managed by the StatefulSet

@@ -1,0 +1,124 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: rabbitmq-default-deny
+  namespace: <%= bindings["namespace"] %>
+spec:
+  podSelector:
+    matchLabels:
+      app: rabbitmq
+  policyTypes:
+  - Ingress
+  - Egress
+  # No ingress or egress rules means all traffic is denied by default
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: rabbitmq-allow-traffic
+  namespace: <%= bindings["namespace"] %>
+spec:
+  podSelector:
+    matchLabels:
+      app: rabbitmq
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # 1. Allow traffic from other RabbitMQ pods in the cluster (for clustering, RPC)
+  - from:
+    - podSelector:
+        matchLabels:
+          app: rabbitmq
+    ports: # Specify all ports needed for inter-node communication if not all are open by default
+    - port: 5672 # AMQP (if clients are also other pods in the cluster)
+    - port: 15672 # Management (if other tools in cluster need it)
+    - port: 4369 # epmd (needed for node discovery if not using k8s discovery exclusively, though k8s plugin is primary)
+    - port: 25672 # Erlang distribution protocol for clustering
+
+  # 2. Allow traffic from clients within the same namespace (adjust podSelector as needed)
+  # This rule allows any pod in 'rabbitmq-qa' namespace to connect to AMQP and Management.
+  # For stricter access, replace with a specific podSelector for your application pods.
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          # This label should be on your 'rabbitmq-qa' namespace or remove namespaceSelector to allow all namespaces (less secure)
+          # For GKE, namespaces might have a label like 'kubernetes.io/metadata.name=rabbitmq-qa' by default.
+          # Or you can add your own label to the namespace e.g. 'name: rabbitmq-qa'
+          kubernetes.io/metadata.name: <%= bindings["namespace"] %> # Or your custom namespace label
+      # podSelector: {} # To allow all pods in the namespace
+      # podSelector: # Example: Allow pods with label 'app: my-client-app'
+      #   matchLabels:
+      #     app: my-client-app
+    ports:
+    - port: 5672
+      protocol: TCP
+    - port: 15672
+      protocol: TCP
+
+  # 3. (Optional) Allow traffic from Ingress/LoadBalancer (if your LoadBalancer source IPs are known)
+  # If your LoadBalancer service is in front, you might need to allow traffic from the LB's source IP ranges
+  # or from the kube-proxy/ingress controller pods if they are not in the same namespace.
+  # Example:
+  # - from:
+  #   - ipBlock:
+  #       cidr: 0.0.0.0/0 # Allows all external - FOR MANAGEMENT UI, CONSIDER MORE RESTRICTIVE RANGES
+  #   ports:
+  #   - port: 15672 # Management UI
+  # - from:
+  #   - ipBlock:
+  #       cidr: 0.0.0.0/0 # Allows all external - FOR AMQP, CONSIDER MORE RESTRICTIVE RANGES
+  #   ports:
+  #   - port: 5672 # AMQP
+
+  egress:
+  # 1. Allow traffic to other RabbitMQ pods in the cluster
+  - to:
+    - podSelector:
+        matchLabels:
+          app: rabbitmq
+    ports: # Specify all ports needed for inter-node communication
+    - port: 5672
+    - port: 15672
+    - port: 4369 # epmd
+    - port: 25672 # Erlang distribution
+
+  # 2. Allow DNS resolution (to kube-dns/CoreDNS)
+  - to:
+    - namespaceSelector: {} # Allow to all namespaces
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns # Standard label for kube-dns/CoreDNS pods
+    ports:
+    - port: 53
+      protocol: UDP
+    - port: 53
+      protocol: TCP
+
+  # 3. Allow traffic to Kubernetes API Server (for peer discovery plugin)
+  # The specific IP and port for the API server can vary.
+  # Often it's on port 443 of the kubernetes.default.svc.cluster.local service.
+  # This rule is broad; for tighter security, discover the specific IP/port.
+  - to:
+    - namespaceSelector: # Default namespace where kubernetes service resides
+        matchLabels:
+          kubernetes.io/metadata.name: default
+      podSelector:
+        matchLabels:
+          # This selector might vary based on your K8s distribution
+          # For GKE, the API server is not typically selected this way directly by user NetworkPolicies
+          # Often, this egress is allowed by default or through other means if not explicitly denied.
+          # If peer discovery fails, this might need adjustment.
+          # component: apiserver # This is a common label but not guaranteed
+          app: kubernetes # GKE typically has a service named 'kubernetes' in the 'default' namespace
+    ports:
+    - port: 443 # HTTPS port for Kubernetes API
+      protocol: TCP
+  # 4. (Optional) If RabbitMQ needs to connect to external services (e.g., external OAuth2 provider, federation)
+  # - to:
+  #   - ipBlock:
+  #       cidr: <external_service_ip_range>/32
+  #   ports:
+  #   - port: <external_service_port>
+  #     protocol: TCP

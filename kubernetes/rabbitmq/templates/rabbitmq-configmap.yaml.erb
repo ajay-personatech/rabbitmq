@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-config
+  namespace: <%= bindings["namespace"] %>
+data:
+  definitions.json: |
+    {
+      "users": [
+        {
+          "name": "admin",
+          "password_hash": "<%= bindings["rabbitmq_admin_password_hash"] || "PLEASE_REPLACE_WITH_SECURE_HASH" %>",
+          "hashing_algorithm": "rabbit_password_hashing_sha256",
+          "tags": "administrator"
+        }
+      ],
+      "vhosts": [
+        {
+          "name": "/"
+        }
+      ],
+      "permissions": [
+        {
+          "user": "admin",
+          "vhost": "/",
+          "configure": ".*",
+          "write": ".*",
+          "read": ".*"
+        }
+      ],
+      "policies": [
+        {
+          "vhost": "/",
+          "name": "ha-all",
+          "pattern": ".*",
+          "apply-to": "queues",
+          "definition": {
+            "ha-mode": "all",
+            "ha-sync-mode": "automatic"
+          }
+        }
+      ],
+      "queues": [],
+      "exchanges": [],
+      "bindings": []
+    }
+  enabled_plugins: |
+    [rabbitmq_management,rabbitmq_peer_discovery_k8s,rabbitmq_prometheus,rabbitmq_consistent_hash_exchange].
