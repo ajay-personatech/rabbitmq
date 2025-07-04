@@ -178,4 +178,7 @@ spec:
       resources:
         requests:
           storage: <%= bindings["rabbitmq_pvc_size"] || "10Gi" %> # Default to 10Gi if not specified
+      <%- if bindings["rabbitmq_storage_class_name"] && !bindings["rabbitmq_storage_class_name"].empty? -%>
+      storageClassName: "<%= bindings['rabbitmq_storage_class_name'] %>"
+      <%- end -%>
       # storageClassName: "standard" # Uncomment and specify if you need a specific storage class

@@ -1,7 +1,7 @@
 # Bindings for the 'testing' environment
 # --- Namespace and GCP Project ---
 namespace: "testing-rabbitmq-new"
-gcp_project_id: "phoenix-testing-369507" # Verify/update if different for testing
+gcp_project_id: "phoenix-development-351409" # Verify/update if different for testing
 
 # --- Secret Names in GCP Secret Manager (Testing specific) ---
 erlang_cookie_secret_name: "testing-rabbitmq-erlang-cookie"
@@ -14,7 +14,7 @@ hpa_max_replicas: 4       # HPA: Maximum replicas
 rabbitmq_admin_password_hash: "PLEASE_REPLACE_WITH_ACTUAL_TESTING_ADMIN_HASH" # Generate with: docker run -it --rm rabbitmq:3.12 rabbitmqctl hash_password "your_testing_password"
 
 # --- Container Image Configuration ---
-rabbitmq_image_repository: "asia-south1-docker.pkg.dev/phoenix-testing-369507/custom-rabbitmq"
+rabbitmq_image_repository: "asia-south1-docker.pkg.dev/phoenix-development-351409/custom-rabbitmq"
 rabbitmq_image_tag: "latest" # Replace with your specific build tag
 
 # --- Resource Requests and Limits (Testing Scale - same as QA for now) ---
@@ -24,6 +24,7 @@ rabbitmq_memory_request: "1Gi" # Memory request per RabbitMQ pod
 rabbitmq_cpu_limit: "1"      # CPU limit per RabbitMQ pod
 rabbitmq_memory_limit: "2Gi"   # Memory limit per RabbitMQ pod
 rabbitmq_pvc_size: "10Gi"      # Persistent Volume Claim size
+rabbitmq_storage_class_name: "premium-rwo" # StorageClass for PVC
 
 # --- Optional & Other Configurations ---
 rabbitmq_ksa_name: "rabbitmq-ksa" # Kubernetes Service Account for RabbitMQ pods
