@@ -177,5 +177,5 @@ spec:
       accessModes: [ "ReadWriteOnce" ] # Suitable for most cloud provider block storage
       resources:
         requests:
-          storage: 10Gi # Adjust storage size as needed
+          storage: <%= bindings["rabbitmq_pvc_size"] || "10Gi" %> # Default to 10Gi if not specified
       # storageClassName: "standard" # Uncomment and specify if you need a specific storage class

@@ -1,0 +1,39 @@
+# Bindings for the 'production' environment
+# --- Namespace and GCP Project ---
+namespace: "production-rabbitmq-new"
+gcp_project_id: "phoenix-production-352505" # Production GCP project ID
+
+# --- Secret Names in GCP Secret Manager (Production specific) ---
+erlang_cookie_secret_name: "production-rabbitmq-erlang-cookie"
+admin_password_secret_name: "production-rabbitmq-admin-password" # For SecretProviderClass to fetch
+
+# --- RabbitMQ Application Behavior (Production Scale) ---
+rabbitmq_base_replicas: 5 # Initial/base number of RabbitMQ pods
+hpa_min_replicas: 5       # HPA: Minimum replicas
+hpa_max_replicas: 10      # HPA: Maximum replicas
+rabbitmq_admin_password_hash: "PLEASE_REPLACE_WITH_ACTUAL_PRODUCTION_ADMIN_HASH" # Generate with: docker run -it --rm rabbitmq:3.12 rabbitmqctl hash_password "your_production_password"
+
+# --- Container Image Configuration ---
+rabbitmq_image_repository: "asia-south1-docker.pkg.dev/phoenix-production-352505/custom-rabbitmq" # Update if your production image repo is different
+rabbitmq_image_tag: "latest" # Replace with your specific production build tag
+
+# --- Resource Requests and Limits (Production Scale) ---
+# (Adjust these based on your Production environment's capacity and needs)
+rabbitmq_cpu_request: "1"      # CPU request per RabbitMQ pod (e.g., "1000m")
+rabbitmq_memory_request: "2Gi" # Memory request per RabbitMQ pod
+rabbitmq_cpu_limit: "2"         # CPU limit per RabbitMQ pod (e.g., "2000m" or "2")
+rabbitmq_memory_limit: "4Gi"   # Memory limit per RabbitMQ pod
+rabbitmq_pvc_size: "20Gi"      # Persistent Volume Claim size
+
+# --- Optional & Other Configurations ---
+rabbitmq_ksa_name: "rabbitmq-ksa" # Kubernetes Service Account for RabbitMQ pods
+app_env: "production"             # Environment name, can be used for conditional logic or naming
+
+# Placeholders for rabbitmq-secret.yaml.erb (if used as a fallback or for other secrets)
+erlang_cookie_placeholder: "cHJvZHVjdGlvbi1lcmxhbmctY29va2llLXBsYWNlaG9sZGVyLWJhc2U2NA==" # echo -n "production-erlang-cookie-placeholder" | base64
+admin_password_placeholder: "cHJvZHVjdGlvbi1hZG1pbi1wYXNzd29yZC1wbGFjZWhvbGRlci1iYXNlNjQ=" # echo -n "production-admin-password-placeholder" | base64
+
+# Example for LoadBalancer annotations (if they differ for Production)
+# client_svc_annotations:
+#   cloud.google.com/load-balancer-type: "External" # Production might use an external LB
+#   networking.gke.io/load-balancer-subnet: "projects/phoenix-production-352505/regions/asia-south1/subnetworks/your-production-subnet" # Example for specific subnet

@@ -23,6 +23,7 @@ rabbitmq_cpu_request: "250m"   # CPU request per RabbitMQ pod
 rabbitmq_memory_request: "512Mi" # Memory request per RabbitMQ pod
 rabbitmq_cpu_limit: "500m"      # CPU limit per RabbitMQ pod
 rabbitmq_memory_limit: "1Gi"   # Memory limit per RabbitMQ pod
+rabbitmq_pvc_size: "10Gi"      # Persistent Volume Claim size
 
 # --- Optional & Other Configurations ---
 rabbitmq_ksa_name: "rabbitmq-ksa" # Kubernetes Service Account for RabbitMQ pods
