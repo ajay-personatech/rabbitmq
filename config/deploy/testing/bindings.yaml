@@ -1,0 +1,39 @@
+# Bindings for the 'testing' environment
+# --- Namespace and GCP Project ---
+namespace: "testing-rabbitmq-new"
+gcp_project_id: "phoenix-development-351409" # Verify/update if different for testing
+
+# --- Secret Names in GCP Secret Manager (Testing specific) ---
+erlang_cookie_secret_name: "testing-rabbitmq-erlang-cookie"
+admin_password_secret_name: "testing-rabbitmq-admin-password" # For SecretProviderClass to fetch
+
+# --- RabbitMQ Application Behavior (Testing Scale - same as QA for now) ---
+rabbitmq_base_replicas: 2 # Initial/base number of RabbitMQ pods
+hpa_min_replicas: 2       # HPA: Minimum replicas
+hpa_max_replicas: 4       # HPA: Maximum replicas
+rabbitmq_admin_password_hash: "PLEASE_REPLACE_WITH_ACTUAL_TESTING_ADMIN_HASH" # Generate with: docker run -it --rm rabbitmq:3.12 rabbitmqctl hash_password "your_testing_password"
+
+# --- Container Image Configuration ---
+rabbitmq_image_repository: "asia-south1-docker.pkg.dev/phoenix-development-351409/custom-rabbitmq"
+rabbitmq_image_tag: "latest" # Replace with your specific build tag
+
+# --- Resource Requests and Limits (Testing Scale - same as QA for now) ---
+# (Adjust these based on your Testing environment's capacity and needs)
+rabbitmq_cpu_request: "500m"   # CPU request per RabbitMQ pod
+rabbitmq_memory_request: "1Gi" # Memory request per RabbitMQ pod
+rabbitmq_cpu_limit: "1"      # CPU limit per RabbitMQ pod
+rabbitmq_memory_limit: "2Gi"   # Memory limit per RabbitMQ pod
+rabbitmq_pvc_size: "10Gi"      # Persistent Volume Claim size
+
+# --- Optional & Other Configurations ---
+rabbitmq_ksa_name: "rabbitmq-ksa" # Kubernetes Service Account for RabbitMQ pods
+app_env: "testing"                # Environment name, can be used for conditional logic or naming
+
+# Placeholders for rabbitmq-secret.yaml.erb (if used as a fallback or for other secrets)
+erlang_cookie_placeholder: "dGVzdGluZy1lcmxhbmctY29va2llLXBsYWNlaG9sZGVyLWJhc2U2NA==" # echo -n "testing-erlang-cookie-placeholder" | base64
+admin_password_placeholder: "dGVzdGluZy1hZG1pbi1wYXNzd29yZC1wbGFjZWhvbGRlci1iYXNlNjQ=" # echo -n "testing-admin-password-placeholder" | base64
+
+# Example for LoadBalancer annotations (if they differ for Testing)
+# client_svc_annotations:
+#   cloud.google.com/load-balancer-type: "Internal"
+#   networking.gke.io/load-balancer-type: "Internal"

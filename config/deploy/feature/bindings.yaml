@@ -1,11 +1,11 @@
 # Bindings for a .feature. environment (adapt as needed)
 # --- Namespace and GCP Project ---
-namespace: "feature-rabbitmq" # Or e.g., feature-<%= bindings["branch_name"] %>-rabbitmq
+namespace: "feature-rabbitmq-new" # Or e.g., feature-<%= bindings["branch_name"] %>-rabbitmq
 gcp_project_id: "phoenix-development-351409" # Verify/update for feature branches if different
 
 # --- Secret Names in GCP Secret Manager (QA specific) ---
-erlang_cookie_secret_name: "feature-rabbitmq-erlang-cookie" # Or use qa- version if shared
-admin_password_secret_name: "feature-rabbitmq-admin-password" # Or use qa- version if shared
+erlang_cookie_secret_name: "feature-rabbitmq-erlang-cookie-new" # Or use qa- version if shared
+admin_password_secret_name: "feature-rabbitmq-admin-password-new" # Or use qa- version if shared
 
 # --- RabbitMQ Application Behavior (QA Scale) ---
 rabbitmq_base_replicas: 1 # Initial/base number of RabbitMQ pods
@@ -19,10 +19,11 @@ rabbitmq_image_tag: "latest" # Replace with your specific build tag
 
 # --- Resource Requests and Limits (QA Scale) ---
 # (Adjust these based on your QA environment's capacity and needs)
-rabbitmq_cpu_request: "100m"   # CPU request per RabbitMQ pod
-rabbitmq_memory_request: "256Mi" # Memory request per RabbitMQ pod
-rabbitmq_cpu_limit: "250m"      # CPU limit per RabbitMQ pod
-rabbitmq_memory_limit: "512Mi"   # Memory limit per RabbitMQ pod
+rabbitmq_cpu_request: "500m"   # CPU request per RabbitMQ pod
+rabbitmq_memory_request: "1Gi" # Memory request per RabbitMQ pod
+rabbitmq_cpu_limit: "1"      # CPU limit per RabbitMQ pod
+rabbitmq_memory_limit: "2Gi"   # Memory limit per RabbitMQ pod
+rabbitmq_pvc_size: "10Gi"      # Persistent Volume Claim size
 
 # --- Optional & Other Configurations ---
 rabbitmq_ksa_name: "rabbitmq-ksa" # Kubernetes Service Account for RabbitMQ pods

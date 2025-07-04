@@ -1,11 +1,11 @@
 # Bindings for a .demo. environment (adapt as needed)
 # --- Namespace and GCP Project ---
-namespace: "demo-rabbitmq"
+namespace: "demo-rabbitmq-new"
 gcp_project_id: "phoenix-development-351409" # Verify/update for demo if different from staging
 
 # --- Secret Names in GCP Secret Manager (Staging specific) ---
-erlang_cookie_secret_name: "demo-rabbitmq-erlang-cookie" # Or use staging- version if shared
-admin_password_secret_name: "demo-rabbitmq-admin-password" # Or use staging- version if shared
+erlang_cookie_secret_name: "demo-rabbitmq-erlang-cookie-new" # Or use staging- version if shared
+admin_password_secret_name: "demo-rabbitmq-admin-password-new" # Or use staging- version if shared
 
 # --- RabbitMQ Application Behavior (Staging Scale) ---
 rabbitmq_base_replicas: 2 # Initial/base number of RabbitMQ pods
@@ -24,6 +24,7 @@ rabbitmq_cpu_request: "500m"   # CPU request per RabbitMQ pod
 rabbitmq_memory_request: "1Gi" # Memory request per RabbitMQ pod
 rabbitmq_cpu_limit: "1"         # CPU limit per RabbitMQ pod (e.g., "1000m" or "1")
 rabbitmq_memory_limit: "2Gi"   # Memory limit per RabbitMQ pod
+rabbitmq_pvc_size: "10Gi"      # Persistent Volume Claim size
 
 # --- Optional & Other Configurations ---
 rabbitmq_ksa_name: "rabbitmq-ksa" # Kubernetes Service Account for RabbitMQ pods
