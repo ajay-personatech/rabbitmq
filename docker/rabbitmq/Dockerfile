@@ -10,7 +10,7 @@ FROM rabbitmq:3.12-management-alpine
 # - Exposes default ports (5672, 15672)
 
 # Maintainer label (optional)
-LABEL maintainer="infra@persoantech.com" # Replace with your email or team alias
+LABEL maintainer="your-email@example.com" # Replace with your email or team alias
 LABEL description="Custom RabbitMQ image based on official Alpine version."
 
 # Copy custom rabbitmq.conf if you have one
