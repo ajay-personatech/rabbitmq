@@ -14,7 +14,7 @@ hpa_max_replicas: 10      # HPA: Maximum replicas
 rabbitmq_admin_password_hash: "PLEASE_REPLACE_WITH_ACTUAL_PRODUCTION_ADMIN_HASH" # Generate with: docker run -it --rm rabbitmq:3.12 rabbitmqctl hash_password "your_production_password"
 
 # --- Container Image Configuration ---
-rabbitmq_image_repository: "asia-south1-docker.pkg.dev/phoenix-production-352505/custom-rabbitmq" # Update if your production image repo is different
+rabbitmq_image_repository: "us-docker.pkg.dev/phoenix-production-352505/production/production-rabbitmq:04072025" # Update if your production image repo is different
 rabbitmq_image_tag: "latest" # Replace with your specific production build tag
 
 # --- Resource Requests and Limits (Production Scale) ---
