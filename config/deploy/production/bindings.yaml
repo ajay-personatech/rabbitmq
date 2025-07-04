@@ -20,9 +20,9 @@ rabbitmq_image_tag: "latest" # Replace with your specific production build tag
 # --- Resource Requests and Limits (Production Scale) ---
 # (Adjust these based on your Production environment's capacity and needs)
 rabbitmq_cpu_request: "1"      # CPU request per RabbitMQ pod (e.g., "1000m")
-rabbitmq_memory_request: "2Gi" # Memory request per RabbitMQ pod
+rabbitmq_memory_request: "1Gi" # Memory request per RabbitMQ pod
 rabbitmq_cpu_limit: "2"         # CPU limit per RabbitMQ pod (e.g., "2000m" or "2")
-rabbitmq_memory_limit: "4Gi"   # Memory limit per RabbitMQ pod
+rabbitmq_memory_limit: "2Gi"   # Memory limit per RabbitMQ pod
 rabbitmq_pvc_size: "20Gi"      # Persistent Volume Claim size
 
 # --- Optional & Other Configurations ---

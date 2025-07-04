@@ -19,10 +19,10 @@ rabbitmq_image_tag: "latest" # Replace with your specific build tag
 
 # --- Resource Requests and Limits (Testing Scale - same as QA for now) ---
 # (Adjust these based on your Testing environment's capacity and needs)
-rabbitmq_cpu_request: "250m"   # CPU request per RabbitMQ pod
-rabbitmq_memory_request: "512Mi" # Memory request per RabbitMQ pod
-rabbitmq_cpu_limit: "500m"      # CPU limit per RabbitMQ pod
-rabbitmq_memory_limit: "1Gi"   # Memory limit per RabbitMQ pod
+rabbitmq_cpu_request: "500m"   # CPU request per RabbitMQ pod
+rabbitmq_memory_request: "1Gi" # Memory request per RabbitMQ pod
+rabbitmq_cpu_limit: "1"      # CPU limit per RabbitMQ pod
+rabbitmq_memory_limit: "2Gi"   # Memory limit per RabbitMQ pod
 rabbitmq_pvc_size: "10Gi"      # Persistent Volume Claim size
 
 # --- Optional & Other Configurations ---
